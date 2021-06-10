@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rsync-daemon
+  labels:
+    app: rsync-daemon
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: rsync-daemon
+  template:
+    metadata:
+      labels:
+        app: rsync-daemon
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 3000
+        fsGroup: 2000      
+      containers:
+      - image: somelocation/rsync-server:0.0.1
+        command: [ "/usr/bin/rsync", "--config=/config/rsyncd.conf", "--no-detach", "--daemon", "--log-file=/dev/stdout", "--port=8873" ]
+        name: rsync
+        securityContext:
+          allowPrivilegeEscalation: false
+        ports:
+        - containerPort: 8873
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: rsync-config
+          mountPath: "/config"
+          readOnly: true
+        - name: rsync-secret
+          mountPath: "/secrets"
+          readOnly: true
+      volumes:
+      - name: data
+        emptyDir: {}
+      - name: rsync-config
+        configMap:
+          name: rsync-daemon          
+      - name: rsync-secret
+        secret:
+          secretName: rsync-daemon
+          defaultMode: 0600
+
+
